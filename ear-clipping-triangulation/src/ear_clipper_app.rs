@@ -1,11 +1,10 @@
 use eframe::egui;
-use egui::{Color32, Pos2, Sense, Stroke};
 
 const WINDOW_WIDTH: f32 = 800.0;
 const WINDOW_HEIGHT: f32 = 600.0;
 
 pub struct EarClipperApp {
-    vertices: Vec<Pos2>,
+    vertices: Vec<egui::Pos2>,
 }
 
 impl EarClipperApp {
@@ -32,19 +31,16 @@ impl EarClipperApp {
 
 impl eframe::App for EarClipperApp {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+        self.draw_left_panel(ctx);
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label("Left click to add vertices. Right click to clear.");
+            ui.label("Click to add vertex. Hold to add continiously.");
 
             let (response, painter) =
-                ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
+                ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
 
-            // right click
-            if response.secondary_clicked() {
-                self.vertices.clear();
-            }
-
-            // left click
             if response.dragged() || response.clicked() {
+                // left click
                 if let Some(mouse_pos) = response.interact_pointer_pos() {
                     // min distance between consequative points
                     let min_distance = 30.0;
@@ -61,7 +57,7 @@ impl eframe::App for EarClipperApp {
                 }
             }
 
-            let stroke = Stroke::new(2.0, Color32::WHITE);
+            let stroke = egui::Stroke::new(2.0, egui::Color32::WHITE);
             if self.vertices.len() > 1 {
                 for i in 0..self.vertices.len() {
                     let start_point = self.vertices[i];
@@ -73,7 +69,23 @@ impl eframe::App for EarClipperApp {
 
             // draw the vertices
             for &vertex in &self.vertices {
-                painter.circle_filled(vertex, 5.0, Color32::RED);
+                painter.circle_filled(vertex, 5.0, egui::Color32::RED);
+            }
+        });
+    }
+}
+
+impl EarClipperApp {
+    fn draw_left_panel(&mut self, ctx: &egui::Context) {
+        egui::SidePanel::left("tools").show(ctx, |ui| {
+            let remove_vertex_button = ui.button("Remove Vertex");
+            if remove_vertex_button.clicked() {
+                self.vertices.pop();
+            }
+
+            let clear_button = ui.button("Clear");
+            if clear_button.clicked() {
+                self.vertices.clear();
             }
         });
     }
