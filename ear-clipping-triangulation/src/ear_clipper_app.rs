@@ -1,16 +1,18 @@
 use eframe::egui;
 
+use crate::vertices_data::VerticesData;
+
 const WINDOW_WIDTH: f32 = 800.0;
 const WINDOW_HEIGHT: f32 = 600.0;
 
 pub struct EarClipperApp {
-    vertices: Vec<egui::Pos2>,
+    vertices_data: VerticesData,
 }
 
 impl EarClipperApp {
     pub fn new() -> Self {
         Self {
-            vertices: Vec::new(),
+            vertices_data: VerticesData::new(),
         }
     }
 
@@ -40,52 +42,49 @@ impl eframe::App for EarClipperApp {
                 ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
 
             if response.dragged() || response.clicked() {
-                // left click
                 if let Some(mouse_pos) = response.interact_pointer_pos() {
-                    // min distance between consequative points
-                    let min_distance = 30.0;
+                    self.vertices_data.add_vertex(mouse_pos);
+                }
+            }
 
-                    let should_add = match self.vertices.last() {
-                        Some(&last_pos) => last_pos.distance(mouse_pos) > min_distance,
-                        // always add the first point if empty
-                        None => true,
-                    };
+            let len = self.vertices_data.get_len();
+            if len > 0 {
+                let main_stroke = egui::Stroke::new(2.0, egui::Color32::WHITE);
 
-                    if should_add {
-                        self.vertices.push(mouse_pos);
+                for i in 0..len {
+                    let (start_point, end_point) = self.vertices_data.get_start_end_points(i);
+                    painter.line_segment([start_point, end_point], main_stroke);
+                    painter.circle_filled(start_point, 5.0, egui::Color32::RED);
+                }
+
+                if len >= 3 {
+                    let triangles = self.vertices_data.triangulate();
+                    let mesh_stroke =
+                        egui::Stroke::new(1.0, egui::Color32::from_rgb(100, 200, 255));
+
+                    for tri in triangles {
+                        painter.line_segment([tri[0], tri[1]], mesh_stroke);
+                        painter.line_segment([tri[1], tri[2]], mesh_stroke);
+                        painter.line_segment([tri[2], tri[0]], mesh_stroke);
                     }
                 }
-            }
-
-            let stroke = egui::Stroke::new(2.0, egui::Color32::WHITE);
-            if self.vertices.len() > 1 {
-                for i in 0..self.vertices.len() {
-                    let start_point = self.vertices[i];
-                    // connect the last point back to the first point to close the shape
-                    let end_point = self.vertices[(i + 1) % self.vertices.len()];
-                    painter.line_segment([start_point, end_point], stroke);
-                }
-            }
-
-            // draw the vertices
-            for &vertex in &self.vertices {
-                painter.circle_filled(vertex, 5.0, egui::Color32::RED);
             }
         });
     }
 }
 
+// ============= private helpers =============
 impl EarClipperApp {
     fn draw_left_panel(&mut self, ctx: &egui::Context) {
         egui::SidePanel::left("tools").show(ctx, |ui| {
             let remove_vertex_button = ui.button("Remove Vertex");
             if remove_vertex_button.clicked() {
-                self.vertices.pop();
+                self.vertices_data.pop();
             }
 
             let clear_button = ui.button("Clear");
             if clear_button.clicked() {
-                self.vertices.clear();
+                self.vertices_data.clear();
             }
         });
     }
