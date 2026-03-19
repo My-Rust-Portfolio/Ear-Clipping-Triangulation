@@ -35,18 +35,30 @@ impl eframe::App for EarClipperApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Left click to add vertices. Right click to clear.");
 
-            let (response, painter) = ui.allocate_painter(ui.available_size(), Sense::click());
-
-            // left click
-            if response.clicked() {
-                if let Some(mouse_pos) = response.interact_pointer_pos() {
-                    self.vertices.push(mouse_pos);
-                }
-            }
+            let (response, painter) =
+                ui.allocate_painter(ui.available_size(), Sense::click_and_drag());
 
             // right click
             if response.secondary_clicked() {
                 self.vertices.clear();
+            }
+
+            // left click
+            if response.dragged() || response.clicked() {
+                if let Some(mouse_pos) = response.interact_pointer_pos() {
+                    // min distance between consequative points
+                    let min_distance = 30.0;
+
+                    let should_add = match self.vertices.last() {
+                        Some(&last_pos) => last_pos.distance(mouse_pos) > min_distance,
+                        // always add the first point if empty
+                        None => true,
+                    };
+
+                    if should_add {
+                        self.vertices.push(mouse_pos);
+                    }
+                }
             }
 
             let stroke = Stroke::new(2.0, Color32::WHITE);
